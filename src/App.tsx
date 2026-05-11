@@ -360,14 +360,17 @@ function Login() {
   const handleGoogleLogin = async () => {
     try {
       const response = await fetch('/api/auth/google/url');
-      if (!response.ok) throw new Error('Failed to get auth URL');
+      if (!response.ok) {
+         const text = await response.text();
+         throw new Error(`Failed to get auth URL: ${response.status} ${text}`);
+      }
       const { url } = await response.json();
       
-      const authWindow = window.open(url, 'oauth_popup', 'width=600,height=700');
-      if (!authWindow) alert('Please allow popups to connect with Google.');
-    } catch (e) {
+      // Use direct redirect instead of popup to avoid mobile popup blockers
+      window.location.href = url;
+    } catch (e: any) {
       console.error(e);
-      alert('Google login failed to initialize.');
+      alert(`Google login failed to initialize: ${e.message || String(e)}`);
     }
   };
 

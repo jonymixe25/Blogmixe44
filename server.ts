@@ -196,10 +196,10 @@ async function startServer() {
                 window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS' }, '*');
                 window.close();
               } else {
-                window.location.href = '/';
+                window.location.href = '/profile';
               }
             </script>
-            <p>Authentication successful. This window should close automatically.</p>
+            <p>Authentication successful. Redirecting...</p>
           </body>
         </html>
       `);
