@@ -126,6 +126,89 @@ async function startServer() {
     res.json(req.user);
   });
 
+  // Google OAuth
+  app.get("/api/auth/google/url", (req, res) => {
+    const redirectUri = `${process.env.APP_URL || 'http://localhost:3000'}/auth/google/callback`;
+    const params = new URLSearchParams({
+      client_id: process.env.GOOGLE_CLIENT_ID || '',
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope: 'openid email profile',
+      access_type: 'online',
+      prompt: 'select_account'
+    });
+    res.json({ url: `https://accounts.google.com/o/oauth2/v2/auth?${params}` });
+  });
+
+  app.get(['/auth/google/callback', '/auth/google/callback/'], async (req, res) => {
+    const { code } = req.query;
+    try {
+      if (!code) {
+         return res.send('No code provided');
+      }
+      const redirectUri = `${process.env.APP_URL || 'http://localhost:3000'}/auth/google/callback`;
+      const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: process.env.GOOGLE_CLIENT_ID || '',
+          client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
+          code: code as string,
+          grant_type: 'authorization_code',
+          redirect_uri: redirectUri,
+        }).toString(),
+      });
+      const tokenData = await tokenRes.json();
+      if (!tokenData.access_token) {
+        console.error("Token error:", tokenData);
+        throw new Error('Failed to obtain access token');
+      }
+      
+      const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: { Authorization: `Bearer ${tokenData.access_token}` },
+      });
+      const userData = await userRes.json();
+      
+      const email = userData.email;
+      const username = userData.name || email.split('@')[0];
+      
+      let user = dbData.users.find(u => u.email === email);
+      if (!user) {
+        user = { id: Date.now(), username, email, password: "" };
+        dbData.users.push(user);
+        await saveDb();
+      }
+      
+      const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, {
+        expiresIn: "1h",
+      });
+      res.cookie("token", token, { 
+        secure: true,
+        sameSite: 'none',
+        httpOnly: true,
+      });
+      
+      res.send(`
+        <html>
+          <body>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS' }, '*');
+                window.close();
+              } else {
+                window.location.href = '/';
+              }
+            </script>
+            <p>Authentication successful. This window should close automatically.</p>
+          </body>
+        </html>
+      `);
+    } catch (e) {
+      console.error('Google Auth Error:', e);
+      res.send('Authentication failed check console logs.');
+    }
+  });
+
   // Blog Posts
   app.get("/api/posts", async (req, res) => {
     const { username } = req.query;
