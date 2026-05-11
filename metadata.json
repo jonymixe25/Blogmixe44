@@ -1,0 +1,6 @@
+{
+  "name": "LocalLens Blog",
+  "description": "A private, local-first blog platform for sharing photos and videos with secure authentication and local media storage.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
