@@ -22,7 +22,7 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 // Database initialization
-const dbFile = "./database.json";
+const dbFile = path.resolve(__dirname, "database.json");
 let dbData: { users: any[], posts: any[] } = { users: [], posts: [] };
 
 async function initDb() {

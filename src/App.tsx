@@ -417,6 +417,7 @@ function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -426,9 +427,26 @@ function Register() {
       body: JSON.stringify({ username, email, password }),
     });
     if (res.ok) {
-      navigate("/login");
+      // Auto-login after successful registration
+      const loginRes = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      if (loginRes.ok) {
+        const { user } = await loginRes.json();
+        login(user);
+        navigate("/");
+      } else {
+        navigate("/login");
+      }
     } else {
-      alert("Registration failed");
+      try {
+        const data = await res.json();
+        alert(`Registration failed: ${data.error}`);
+      } catch (e) {
+        alert("Registration failed");
+      }
     }
   };
 
